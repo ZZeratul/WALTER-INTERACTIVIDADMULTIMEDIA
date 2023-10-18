@@ -20,8 +20,8 @@ git clone https://gitlab.softwarelibre.gob.bo/capacitacion/nestjs-base-backend.g
 # Ingresamos dentro de la carpeta del proyecto
 cd nestjs-backend-base
 
-# Cambiamos a la rama develop
-git checkout develop
+# Cambiamos a la rama principal
+git checkout main
 
 # Instalamos dependencias
 npm install

@@ -2,7 +2,7 @@
 
 <p>
   <a href="./">
-    <img src="https://img.shields.io/badge/version-v1.6.1-blue" alt="Versión">
+    <img src="https://img.shields.io/badge/version-v1.0.1-blue" alt="Versión">
   </a>
   <a href="./LICENSE">
       <img src="https://img.shields.io/static/v1?label=license&message=LPG%20-%20Bolivia&color=green" alt="Licencia: LPG - Bolivia" />
@@ -63,13 +63,7 @@ Documentación relacionada con el proyecto:
 
 ## Comandos útiles
 
-1. Generación del diagrama ERD (deshabilitado hasta tener soporte para TypeOrm 0.3)
-
-   ```bash
-   $ npm run db:diagram
-   ```
-
-2. Generación de documentación
+1. Generación de documentación
 
    ```bash
    $ npm run compodoc
@@ -77,20 +71,17 @@ Documentación relacionada con el proyecto:
 
 ## Changelog
 
-1. Generar tag de la versión
-
-   > Cambiar el número de versión en archivo `package.json`
-
-2. Generar tag y archivo CHANGELOG
+1. Generar tag y archivo CHANGELOG
 
    ```bash
-   npm run release
+   # patch | minor | major
+   npm run release -- --release-as patch
    ```
 
-3. Guardar los tags generados
+2. Guardar los tags generados
 
    ```bash
-   git push --follow-tags origin master
+   git push --follow-tags origin main
    ```
 
 ## Licencia

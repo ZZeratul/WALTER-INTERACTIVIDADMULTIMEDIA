@@ -1,14 +1,15 @@
-import { TextService } from '../../../common/lib/text.service'
+import { TextService } from '@/common/lib/text.service'
 import { Persona } from '../entity/persona.entity'
 import { Usuario } from '../entity/usuario.entity'
 import { PersonaDto } from '../dto/persona.dto'
-import { Status } from '../../../common/constants'
 import { FiltrosUsuarioDto } from '../dto/filtros-usuario.dto'
 import { Injectable } from '@nestjs/common'
 import { Brackets, DataSource, EntityManager } from 'typeorm'
 import { ActualizarUsuarioDto } from '../dto/actualizar-usuario.dto'
 import dayjs from 'dayjs'
 import { UsuarioDto } from '../dto/usuario.dto'
+import { UsuarioEstado } from '@/core/usuario/constant'
+import { UsuarioRolEstado } from '@/core/authorization/constant'
 
 @Injectable()
 export class UsuarioRepository {
@@ -39,7 +40,7 @@ export class UsuarioRepository {
         'persona.fechaNacimiento',
         'persona.tipoDocumento',
       ])
-      .where('usuarioRol.estado = :estado', { estado: Status.ACTIVE })
+      .where('usuarioRol.estado = :estado', { estado: UsuarioRolEstado.ACTIVE })
       .take(limite)
       .skip(saltar)
 
@@ -145,14 +146,14 @@ export class UsuarioRepository {
       .getOne()
   }
 
-  async buscarUsuarioPorCI(persona: PersonaDto) {
+  async buscarUsuarioPorCI(ci: string) {
     return await this.dataSource
       .getRepository(Usuario)
       .createQueryBuilder('usuario')
       .leftJoinAndSelect('usuario.persona', 'persona')
       .leftJoinAndSelect('usuario.usuarioRol', 'usuarioRol')
       .leftJoinAndSelect('usuarioRol.rol', 'rol')
-      .where('persona.nroDocumento = :ci', { ci: persona.nroDocumento })
+      .where('persona.nroDocumento = :ci', { ci: ci })
       .getOne()
   }
 
@@ -189,7 +190,7 @@ export class UsuarioRepository {
       new Usuario({
         idPersona: idPersona,
         usuario: usuarioDto.usuario,
-        estado: usuarioDto?.estado ?? Status.CREATE,
+        estado: usuarioDto?.estado ?? UsuarioEstado.CREATE,
         correoElectronico: usuarioDto?.correoElectronico,
         contrasena:
           usuarioDto?.contrasena ??
@@ -344,7 +345,7 @@ export class UsuarioRepository {
       .execute()
   }
 
-  async runTransaction<T>(op: (entityManager: EntityManager) => Promise<T>) {
+  runTransaction<T>(op: (entityManager: EntityManager) => Promise<T>) {
     return this.dataSource.manager.transaction<T>(op)
   }
 

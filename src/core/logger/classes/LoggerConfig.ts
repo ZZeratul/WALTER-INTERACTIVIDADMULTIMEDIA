@@ -4,8 +4,8 @@ import path from 'path'
 import { FileParams, LoggerParams } from '../types'
 import { LokiOptions } from 'pino-loki'
 import { DEFAULT_SENSITIVE_PARAMS, LOG_LEVEL } from '../constants'
-import fs from 'fs'
-import zlib from 'zlib'
+import fs from 'node:fs/promises'
+import pako from 'pako'
 
 export class LoggerConfig {
   static getMainStream(loggerParams: LoggerParams): pino.MultiStreamRes {
@@ -72,17 +72,34 @@ export class LoggerConfig {
           console.error('Error con el rotado de logs', e)
         }
       })
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      stream.on('rotate', (oldFile: string, newFile: string) => {
-        const gzip = zlib.createGzip()
-        const input = fs.createReadStream(oldFile)
-        const output = fs.createWriteStream(oldFile + '.gz')
-        input.pipe(gzip).pipe(output)
-        output.on('error', (e) => {
-          console.error('Error al comprimir el archivo:', e)
+
+      // stream.on('rotate', (oldFile: string, newFile: string) // en caso de necesitar alguna operación con el nuevo archivo
+
+      stream.on('rotate', async (oldFile) => {
+        const inputFile = await fs.open(oldFile)
+        const input = inputFile.createWriteStream()
+
+        const outputFile = await fs.open(oldFile + '.gz')
+        const output = outputFile.createWriteStream()
+
+        input.on('error', (error: any) => {
+          console.error('Error al leer el archivo:', error)
         })
-        output.on('finish', () => {
-          setTimeout(() => fs.unlink(oldFile, () => ({})), 60000)
+
+        output.on('error', (error: any) => {
+          console.error('Error al escribir el archivo comprimido:', error)
+        })
+
+        input.on('data', (data: Buffer) => {
+          const compressedData = pako.gzip(data.toString())
+          output.write(compressedData)
+        })
+
+        input.on('end', () => {
+          output.end()
+          setTimeout(async () => {
+            await fs.unlink(oldFile)
+          }, 60000)
         })
       })
       return stream

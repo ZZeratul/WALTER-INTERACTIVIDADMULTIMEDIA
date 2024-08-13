@@ -1,4 +1,4 @@
-import { LoggerService } from '../../logger'
+import { LoggerService } from '@/core/logger'
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PassportStrategy } from '@nestjs/passport'
@@ -16,7 +16,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     })
   }
 
-  async validate(payload: PayloadType): Promise<PassportUser> {
+  validate(payload: PayloadType): PassportUser {
     return {
       id: payload.id,
       roles: payload.roles,

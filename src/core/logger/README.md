@@ -2,9 +2,31 @@
 
 Librería para registrar eventos o capturar errores del sistema.
 
+## Códigos de error
+
+Internos (causados por la aplicación)
+
+| Código  | Descripción                              | Causa                                                                           |
+| ------- | ---------------------------------------- | ------------------------------------------------------------------------------- |
+| `E-50`  | `Error desconocido`                      | error = `'BOOM'`, `{ name: 'Error' }`, `new Error()`, `undefined`, `null`, `''` |
+| `E-40`  | `Error HTTP`                             | error = `new HttpException()`                                                   |
+| `E-SQL` | `Error de consulta con la Base de Datos` | error = `{ name: "QueryFailedError" }`                                          |
+| `E-DTO` | `Error de validación con el DTO`         | error = `new BadRequestException() - DTO`                                       |
+
+Externos (causados por agentes externos)
+
+| Código            | Descripción                                        | Causa                                                      |
+| ----------------- | -------------------------------------------------- | ---------------------------------------------------------- |
+| `ES-REQUEST`      | `Error de consulta con Servicio Externo`           | error = `axios().catch(err => ...)`                        |
+| `ES-ECONNREFUSED` | `Error de conexión con Servicio Externo`           | error = `{ code: 'ECONNREFUSED' }`                         |
+| `ES-TIMEOUT`      | `Error de TIMEOUT con Servicio Externo`            | response = `{ data: "The upstream server is timing out" }` |
+| `ES-CERT`         | `Error de certificado con Servicio Externo`        | error = `{ code: 'CERT_HAS_EXPIRED' }`                     |
+| `ES-MESSAGE`      | `Error desconocido con Servicio Externo (message)` | body = `{ message: "detalle del error" }`                  |
+| `ES-DATA`         | `Error desconocido con Servicio Externo (data)`    | body = `{ data: "detalle del error" }`                     |
+
 ## Modo de uso
 
-**Ejemplo 1** Para registrar un error controlado manualmente
+**Ejemplo 1** Para guardar cualquier tipo de error.
 
 ```ts
 import { LoggerService } from '../src/core/logger'
@@ -23,36 +45,14 @@ function tarea(datos) {
 Ejemplos de implementación:
 
 ```ts
-logger.error(error)
-logger.error(error, mensaje)
-logger.error(error, mensaje, metadata)
-logger.error(error, mensaje, metadata, modulo)
-logger.error(error, {
-  mensaje,
-  metadata,
-  modulo,
-})
-
-logger.warn(mensaje)
-logger.warn(mensaje, metadata)
-logger.warn(mensaje, metadata, modulo)
-logger.warn({
-  mensaje,
-  metadata,
-  modulo,
-})
-
-logger.info(mensaje)
-logger.info(mensaje, metadata)
-logger.info(mensaje, metadata, modulo)
-logger.info({
-  mensaje,
-  metadata,
-  modulo,
-})
+logger.error(error, ...params)
+logger.warn(...params)
+logger.info(...params)
+logger.debug(...params)
+logger.trace(...params)
 ```
 
-**Ejemplo 2** Para lanzar una excepción controlada de un error desconocido
+**Ejemplo 2** Para convertir un error desconocido en un error de tipo `HTTP ERROR`.
 
 ```ts
 import { BaseException } from '../src/core/logger'
@@ -61,7 +61,13 @@ function tarea(datos) {
   try {
     // código inseguro
   } catch (error) {
-    throw new BaseException(error)
+    throw new BaseException(error, {
+      codigo,
+      mensaje,
+      accion,
+      metadata,
+      modulo,
+    })
   }
 }
 ```
@@ -71,19 +77,18 @@ Ejemplos de implementación:
 ```ts
 throw new BaseException(error)
 throw new BaseException(error, {
+  codigo,
   mensaje,
   metadata,
   modulo,
   httpStatus,
   causa,
   accion,
+  clientInfo, // Para enviar información adicional al cliente
 })
 ```
 
 ## Casos de uso
-
-- Para registrar errores. Ej.: errores en tiempo de ejecución. Registro manual (errores controlados) y registro automático (errores no controlados)
-- Para registrar eventos. Ej.: cuando un servicio ha sido iniciado o detenido, cuando un componente ha sido activado. Registro manual
 
 ## 1. Para capturar errores en tiempo de ejecución
 
@@ -143,7 +148,9 @@ async function recuperar() {
 
 ## 3. Logs para servicios externos
 
-Ejemplo:
+Se trata de registrar excepciones causadas por un módulo en específico (en este caso una consulta a un Servicio Externo).
+
+**Ejemplo 1:** Utilizando la clase `ExternalServiceException`.
 
 ```ts
 function tarea(datos) {
@@ -151,6 +158,20 @@ function tarea(datos) {
     // código inseguro
   } catch (error) {
     throw new ExternalServiceException('SEGIP:CONTRASTACION', error)
+  }
+}
+```
+
+**Ejemplo 2:** Utilizando la clase `BaseException`.
+
+```ts
+function tarea(datos) {
+  try {
+    // código inseguro
+  } catch (error) {
+    throw new BaseException(error, {
+      modulo: 'SEGIP:CONTRASTACION',
+    })
   }
 }
 ```
@@ -198,7 +219,7 @@ Además se incluyen tipos de auditoría para diferenciarlos cuando se imprimen p
 
 ```ts
 logger.auditError('application', mensaje)
-logger.auditWarning('application', mensaje)
+logger.auditWarn('application', mensaje)
 logger.auditSuccess('application', mensaje)
 logger.auditInfo('application', mensaje)
 ```

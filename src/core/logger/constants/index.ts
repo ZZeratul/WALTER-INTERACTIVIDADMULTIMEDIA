@@ -22,26 +22,32 @@ export enum LOG_LEVEL {
   ERROR = 'error', // 50 Mensajes de error (Ej.: errores del lado del servidor HTTP 500)
   WARN = 'warn', // 40 Mensajes de advertencia (Ej.: errores del lado del cliente HTTP 400)
   INFO = 'info', // 30 Mensajes informativos (Ej.: cuando un servicio ha sido iniciado o detenido, cuando un componente ha sido activado)
-}
-
-export const LOG_NUMBER = {
-  [LOG_LEVEL.ERROR]: 50,
-  [LOG_LEVEL.WARN]: 40,
-  [LOG_LEVEL.INFO]: 30,
+  DEBUG = 'debug', // 20 Mensajes para el desarrollador (Ej.: Información detallada que puede ayudar al desarrollador a resolver un problema - puede activarse en prod temporalmente)
+  TRACE = 'trace', // 10 Mensajes para el desarrollador (Ej.: Para rastrear la ruta de ejecución del código en un programa - solo para test y desarrollo)
 }
 
 export const LOG_COLOR = {
   [LOG_LEVEL.ERROR]: COLOR.LIGHT_RED,
   [LOG_LEVEL.WARN]: COLOR.YELLOW,
   [LOG_LEVEL.INFO]: COLOR.CYAN,
+  [LOG_LEVEL.DEBUG]: COLOR.LIGHT_MAGENTA,
+  [LOG_LEVEL.TRACE]: COLOR.LIGHT_GREY,
+}
+
+export enum AUDIT_LEVEL {
+  DEFAULT = 'default',
+  ERROR = 'error',
+  WARN = 'warn',
+  INFO = 'info',
+  SUCCESS = 'success',
 }
 
 export const LOG_AUDIT_COLOR = {
-  ['error']: COLOR.LIGHT_RED,
-  ['warning']: COLOR.YELLOW,
-  ['info']: COLOR.CYAN,
-  ['success']: COLOR.GREEN,
-  ['none']: COLOR.LIGHT_GREY,
+  [AUDIT_LEVEL.ERROR]: COLOR.LIGHT_RED,
+  [AUDIT_LEVEL.WARN]: COLOR.YELLOW,
+  [AUDIT_LEVEL.INFO]: COLOR.CYAN,
+  [AUDIT_LEVEL.SUCCESS]: COLOR.GREEN,
+  [AUDIT_LEVEL.DEFAULT]: COLOR.LIGHT_GREY,
 }
 
 export * from './initial-values'

@@ -1,5 +1,5 @@
-import { ExternalServiceException } from '../../../../common/exceptions'
-import { BaseService } from '../../../../common/base'
+import { ExternalServiceException } from '@/common/exceptions'
+import { BaseService } from '@/common/base'
 import { Injectable } from '@nestjs/common'
 import { SINCredencialesDTO } from './credenciales.dto'
 import { HttpService } from '@nestjs/axios'
@@ -15,7 +15,7 @@ export class SinService extends BaseService {
 
   /**
    * @title Login
-   * @description Metodo para verificar si la información de la empresa existe en el servicio del SIN
+   * @description Método para verificar si la información de la empresa existe en el servicio del SIN
    */
   async login(datosSIN: SINCredencialesDTO): Promise<LoginResult> {
     let mensaje: string | undefined = undefined

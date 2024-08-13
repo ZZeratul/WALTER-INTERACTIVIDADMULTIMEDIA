@@ -5,15 +5,15 @@ Ejemplo si la base de datos es `database_db`.
 ## Creando backup (de forma automática con docker)
 
 ```bash
-# Ejemplo: bash dbbackup.sh <dockerContainer> <dbname> <dbfile>
-bash dbbackup.sh pg16 database_db database_db.gz
+# Ejemplo: bash dbbackup_docker.sh <dockerContainer>
+bash dbbackup_docker.sh pg16
 ```
 
 ## Restaurando backup (de forma automática con docker)
 
 ```bash
-# Ejemplo: bash dbrestore.sh <dockerContainer> <dbname> <dbfile>
-bash dbrestore.sh pg16 database_db database_db.gz
+# Ejemplo: bash dbrestore_docker.sh <dockerContainer>
+bash dbrestore_docker.sh pg16
 ```
 
 ## Creando backup (manualmente)
@@ -33,11 +33,14 @@ DROP DATABASE IF EXISTS database_db;
 
 -- creamos la nueva base
 CREATE DATABASE database_db ENCODING 'UTF-8';
+
+-- configuramos la zona horaria (solo es necesario si utilizamos docker)
+ALTER ROLE postgres SET TIMEZONE TO 'America/La_Paz';
 ```
 
 Ahora si procedemos a restaurar la base
 
 ```bash
 # Restore
-zcat database_db.gz | psql -h localhost -U postgres -W database_db
+zcat database_db.gz | psql -h localhost -p 5432 -U postgres -W database_db
 ```

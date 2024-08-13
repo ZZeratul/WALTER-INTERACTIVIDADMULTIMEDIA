@@ -27,7 +27,7 @@ describe('NroDocumento validator', () => {
     expect(nroDocumento('12345-A1')).toBe(true)
   })
 
-  it('Debería retornar false para entradas con formato con complemento cuando se deshabilita la validacion', () => {
+  it('Debería retornar false para entradas con formato con complemento cuando se deshabilita la validación', () => {
     expect(nroDocumento('12345-11', { complemento: false })).toBe(false)
     expect(nroDocumento('12345-1A', { complemento: false })).toBe(false)
     expect(nroDocumento('12345-AA', { complemento: false })).toBe(false)

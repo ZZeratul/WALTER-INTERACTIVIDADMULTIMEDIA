@@ -9,7 +9,7 @@ import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import { INestApplication, ValidationPipe } from '@nestjs/common'
 import { TypeormStore } from 'connect-typeorm'
-import { Session } from './core/authentication/entity/session.entity'
+import { Session } from '@/core/authentication/entity/session.entity'
 import dotenv from 'dotenv'
 
 import {
@@ -104,10 +104,12 @@ function createSwagger(app: INestApplication) {
     .setTitle(SWAGGER_API_NAME)
     .setDescription(SWAGGER_API_DESCRIPTION)
     .setVersion(SWAGGER_API_CURRENT_VERSION)
+    .addServer(`http://localhost:${process.env.PORT}/api/`)
+    .addBearerAuth()
     .build()
 
   const document = SwaggerModule.createDocument(app, options)
   SwaggerModule.setup(SWAGGER_API_ROOT, app, document)
 }
 
-bootstrap()
+void bootstrap()

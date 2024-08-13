@@ -1,5 +1,5 @@
 import { Client, Issuer } from 'openid-client'
-import { LoggerService } from '../logger'
+import { BaseException, LoggerService } from '@/core/logger'
 import { custom } from 'openid-client'
 
 //Para cambiar el timeout del cliente de ciudadanía en caso de ser necesario.
@@ -18,10 +18,6 @@ export class ClientOidcService {
     const oidcClient = process.env[`OIDC_CLIENT_ID`] || ''
     const oidcSecret = process.env[`OIDC_CLIENT_SECRET`] || ''
 
-    if (oidcIssuer === '__OIDC_ISSUER__') {
-      return
-    }
-
     try {
       const issuer = await Issuer.discover(oidcIssuer)
       ClientOidcService.client = new issuer.Client({
@@ -30,11 +26,13 @@ export class ClientOidcService {
       })
     } catch (error: unknown) {
       setTimeout(() => {
-        logger.error(error, {
-          modulo: 'CIUDADANÍA',
-          mensaje: 'Error de conexión con ciudadanía',
-          metadata: { oidcIssuer },
-        })
+        logger.error(
+          new BaseException(error, {
+            modulo: 'CIUDADANÍA',
+            mensaje: 'Error de conexión con ciudadanía',
+            metadata: { oidcIssuer },
+          })
+        )
       }, 2000)
     }
     return ClientOidcService.client

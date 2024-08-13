@@ -1,5 +1,5 @@
 import { TokenDto } from '../dto/index.dto'
-import { BaseService } from '../../../common/base'
+import { BaseService } from '@/common/base'
 import {
   Inject,
   Injectable,
@@ -11,13 +11,13 @@ import dayjs from 'dayjs'
 import { ConfigService } from '@nestjs/config'
 
 import { RefreshTokensRepository } from '../repository/refreshTokens.repository'
-import { UsuarioService } from '../../usuario/service/usuario.service'
 
 import { Cron } from '@nestjs/schedule'
 
 import dotenv from 'dotenv'
-import { Messages } from '../../../common/constants/response-messages'
-import { TextService } from '../../../common/lib/text.service'
+import { Messages } from '@/common/constants/response-messages'
+import { TextService } from '@/common/lib/text.service'
+import { UsuarioService } from '@/core/usuario/service/usuario.service'
 
 dotenv.config()
 
@@ -33,7 +33,7 @@ export class RefreshTokensService extends BaseService {
     super()
   }
 
-  async create(grantId: string) {
+  create(grantId: string) {
     const ttl = parseInt(
       this.configService.get('REFRESH_TOKEN_EXPIRES_IN') || '3600000',
       10
@@ -109,7 +109,7 @@ export class RefreshTokensService extends BaseService {
       10
     )
 
-    // crear rotacion de refresh token
+    // crear rotación de refresh token
     const sigueVigente = dayjs(refreshToken.expiresAt).diff(dayjs()) < rft
 
     if (!sigueVigente) {
@@ -135,7 +135,7 @@ export class RefreshTokensService extends BaseService {
   }
 
   @Cron(process.env.REFRESH_TOKEN_REVISIONS || '0')
-  async eliminarCaducos() {
+  eliminarCaducos() {
     return this.refreshTokensRepository.eliminarTokensCaducos()
   }
 }

@@ -1,7 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { of } from 'rxjs'
-
-import { PersonaDto } from '../../../usuario/dto/persona.dto'
 import { SegipService } from './segip.service'
 import { plainToClass } from 'class-transformer'
 import { HttpModule, HttpService } from '@nestjs/axios'
@@ -10,6 +8,7 @@ import {
   InternalAxiosRequestConfig,
   RawAxiosResponseHeaders,
 } from 'axios'
+import { PersonaDto } from '@/core/usuario/dto/persona.dto'
 
 const dataDefaultAxios = {
   headers: {} as RawAxiosResponseHeaders,
@@ -72,8 +71,15 @@ describe('SegipService', () => {
     httpService = module.get<HttpService>(HttpService)
   })
   it('[contrastar] Debería retornar finalizado = true, si se logró contrastar todos los datos', async () => {
-    const resContrastacion =
-      '{"ComplementoVisible":1,"NumeroDocumento":1,"Complemento":2,"Nombres":1,"PrimerApellido":1,"SegundoApellido":1,"FechaNacimiento":1}'
+    const resContrastacion = JSON.stringify({
+      ComplementoVisible: 1,
+      NumeroDocumento: 1,
+      Complemento: 2,
+      Nombres: 1,
+      PrimerApellido: 1,
+      SegundoApellido: 1,
+      FechaNacimiento: 1,
+    })
     const response = makeSuccessResponse(resContrastacion)
 
     jest.spyOn(httpService, 'get').mockImplementation(() => of<any>(response))
@@ -100,8 +106,16 @@ describe('SegipService', () => {
   })
 
   it('[contrastar] Debería retornar finalizado = false, si no algún dato no es correcto', async () => {
-    const resContrastacion =
-      '{"ComplementoVisible":1,"NumeroDocumento":2,"Complemento":0,"Nombres":0,"PrimerApellido":0,"SegundoApellido":0,"FechaNacimiento":0}'
+    const resContrastacion = JSON.stringify({
+      ComplementoVisible: 1,
+      NumeroDocumento: 2,
+      Complemento: 0,
+      Nombres: 0,
+      PrimerApellido: 0,
+      SegundoApellido: 0,
+      FechaNacimiento: 0,
+    })
+
     const response = makeSuccessResponse(resContrastacion)
     jest.spyOn(httpService, 'get').mockImplementation(() => of<any>(response))
 

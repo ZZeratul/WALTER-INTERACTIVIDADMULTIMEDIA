@@ -12,17 +12,19 @@ import {
 } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { Issuer } from 'openid-client'
-import { CookieService } from '../../../common/lib/cookie.service'
-import { BaseController } from '../../../common/base'
+import { CookieService } from '@/common/lib/cookie.service'
+import { BaseController } from '@/common/base'
 import { LocalAuthGuard } from '../guards/local-auth.guard'
 import { OidcAuthGuard } from '../guards/oidc-auth.guard'
 import { AuthenticationService } from '../service/authentication.service'
 import { RefreshTokensService } from '../service/refreshTokens.service'
 import { JwtAuthGuard } from '../guards/jwt-auth.guard'
 import { ConfigService } from '@nestjs/config'
-import { CambioRolDto } from '../dto/index.dto'
+import { AuthDto, CambioRolDto } from '../dto/index.dto'
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger'
 
 @Controller()
+@ApiTags('Autenticación')
 export class AuthenticationController extends BaseController {
   constructor(
     private autenticacionService: AuthenticationService,
@@ -32,6 +34,8 @@ export class AuthenticationController extends BaseController {
     super()
   }
 
+  @ApiOperation({ summary: 'API para autenticación con usuario y contraseña' })
+  @ApiBody({ description: 'Autenticación de usuarios', type: AuthDto })
   @UseGuards(LocalAuthGuard)
   @Post('auth')
   async login(@Req() req: Request, @Res() res: Response) {
@@ -54,6 +58,7 @@ export class AuthenticationController extends BaseController {
       .send({ finalizado: true, mensaje: 'ok', datos: result.data })
   }
 
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Patch('cambiarRol')
   async changeRol(
@@ -63,7 +68,7 @@ export class AuthenticationController extends BaseController {
   ) {
     if (!req.user) {
       throw new BadRequestException(
-        `Es necesario que este autenticado para consumir este recurso.`
+        `Es necesario que esté autenticado para consumir este recurso.`
       )
     }
     const result = await this.autenticacionService.cambiarRol(req.user, body)
@@ -79,12 +84,14 @@ export class AuthenticationController extends BaseController {
       .send({ finalizado: true, mensaje: 'ok', datos: result.data })
   }
 
+  @ApiOperation({ summary: 'API para autenticación con ciudadania digital' })
   @UseGuards(OidcAuthGuard)
   @Get('ciudadania-auth')
   async loginCiudadania() {
     //
   }
 
+  @ApiOperation({ summary: 'API para autorización con ciudadania digital' })
   @UseGuards(OidcAuthGuard)
   @Get('ciudadania-autorizar')
   async loginCiudadaniaCallback(@Req() req: Request, @Res() res: Response) {
@@ -92,25 +99,45 @@ export class AuthenticationController extends BaseController {
       return res.status(200).json({})
     }
 
-    const result = await this.autenticacionService.autenticarOidc(req.user)
+    const user = req.user
+    if (user.error) {
+      return await this.logoutCiudadania(req, res, user.error)
+    }
 
-    const refreshToken = result.refresh_token.id
+    try {
+      const result = await this.autenticacionService.autenticarOidc(req.user)
 
-    return res
-      .cookie(
-        this.configService.get('REFRESH_TOKEN_NAME') || '',
-        refreshToken,
-        CookieService.makeConfig(this.configService)
-      )
-      .status(200)
-      .json({
-        access_token: result.data.access_token,
-      })
+      const refreshToken = result.refresh_token.id
+
+      return res
+        .cookie(
+          this.configService.get('REFRESH_TOKEN_NAME') || '',
+          refreshToken,
+          CookieService.makeConfig(this.configService)
+        )
+        .status(200)
+        .json({
+          access_token: result.data.access_token,
+        })
+    } catch (error) {
+      this.logger.error('[ciudadania-autorizar] Error en autenticación ', error)
+      await this.logoutCiudadania(req, res, error.message)
+    }
   }
 
-  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'API para logout digital' })
+  @ApiBearerAuth()
+  // @UseGuards(JwtAuthGuard)
   @Get('logout')
-  async logoutCiudadania(@Req() req: Request, @Res() res: Response) {
+  async salirCiudadania(@Req() req: Request, @Res() res: Response) {
+    await this.logoutCiudadania(req, res)
+  }
+
+  async logoutCiudadania(
+    @Req() req: Request,
+    @Res() res: Response,
+    mensaje = ''
+  ) {
     const jid = req.cookies.jid || ''
     if (jid) {
       await this.refreshTokensService.removeByid(jid)
@@ -121,14 +148,11 @@ export class AuthenticationController extends BaseController {
 
     // req.logout();
     req.session.destroy(() => ({}))
+    const issuer = await Issuer.discover(
+      this.configService.get('OIDC_ISSUER') || ''
+    )
+    const urlEndSession = issuer.metadata.end_session_endpoint
 
-    const oidcIssuer = this.configService.get('OIDC_ISSUER') || ''
-    if (oidcIssuer === '__OIDC_ISSUER__') {
-      return res.status(200).json()
-    }
-
-    const issuer = await Issuer.discover(oidcIssuer)
-    const url = issuer.metadata.end_session_endpoint
     res.clearCookie('connect.sid')
     res.clearCookie('jid', jid)
     const idUsuario = req.headers.authorization
@@ -145,14 +169,24 @@ export class AuthenticationController extends BaseController {
       metadata: { usuario: idUsuario },
     })
 
-    if (!(url && idToken)) {
+    // Ciudadanía v2
+    if (!(urlEndSession && idToken)) {
       return res.status(200).json()
     }
 
+    const urlResponse = new URL(urlEndSession)
+
+    urlResponse.searchParams.append(
+      'post_logout_redirect_uri',
+      this.configService.get('OIDC_POST_LOGOUT_REDIRECT_URI') ?? ''
+    )
+    if (idToken) {
+      urlResponse.searchParams.append('id_token_hint', idToken)
+    }
+    urlResponse.searchParams.append('mensaje', mensaje)
+
     return res.status(200).json({
-      url: `${url}?post_logout_redirect_uri=${this.configService.get(
-        'OIDC_POST_LOGOUT_REDIRECT_URI'
-      )}&id_token_hint=${idToken}`,
+      url: urlResponse.toString(),
     })
   }
 }

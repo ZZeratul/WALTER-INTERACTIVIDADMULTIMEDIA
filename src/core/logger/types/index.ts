@@ -1,7 +1,7 @@
 import { Level } from 'pino'
 import { LoggerService } from '../classes'
 import { HttpStatus } from '@nestjs/common'
-import { ERROR_CODE, LOG_LEVEL } from '../constants'
+import { AUDIT_LEVEL, ERROR_CODE, LOG_LEVEL } from '../constants'
 
 export type FileParams = {
   path: string
@@ -30,6 +30,7 @@ export type LoggerParams = {
   fileParams?: FileParams
   lokiParams?: LokiParams
   auditParams?: AuditParams
+  excludeOrigen?: string[]
   _levels: Level[]
   _audit: string[]
 }
@@ -40,6 +41,7 @@ export type LoggerOptions = {
   level?: string
   hide?: string
   projectPath?: string
+  excludeOrigen?: string[]
   fileParams?: Partial<FileParams>
   lokiParams?: Partial<LokiParams>
   auditParams?: Partial<AuditParams>
@@ -76,23 +78,22 @@ export type BaseExceptionOptions = {
   accion?: string
   codigo?: ERROR_CODE
   origen?: string
+  clientInfo?: unknown
 }
 
 export type BaseLogOptions = {
-  level?: LOG_LEVEL.WARN | LOG_LEVEL.INFO
+  level?: LOG_LEVEL
   mensaje?: string
   metadata?: Metadata
   modulo?: string
 }
 
-export type AuditType = 'error' | 'warning' | 'success' | 'info' | 'none'
-
 export type BaseAuditOptions = {
+  level?: AUDIT_LEVEL
   contexto: string
   mensaje?: string
   metadata?: Metadata
   formato?: string
-  tipo?: AuditType
 }
 
 export type LogOptions = {
@@ -120,8 +121,8 @@ export type LogEntry = {
   context?: string
   fecha: string // con formato YYYY-MM-DD HH:mm:ss.SSS
   hostname?: string
-  level?: number // 40=warn, 50=error
-  levelText?: string // error | warn
+  level?: number // 30=info, 40=warn, 50=error
+  levelText?: string // error | warn | info
   mensaje?: string
   metadata?: Metadata
   modulo?: string

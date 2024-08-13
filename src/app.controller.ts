@@ -1,17 +1,20 @@
 import { Controller, Get, Inject } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { BaseController } from './common/base'
+import { BaseController } from '@/common/base'
 import packageJson from '../package.json'
 import dayjs from 'dayjs'
+import { ApiOperation, ApiTags } from '@nestjs/swagger'
 
 @Controller()
+@ApiTags('Estado')
 export class AppController extends BaseController {
   constructor(@Inject(ConfigService) private configService: ConfigService) {
     super()
   }
 
+  @ApiOperation({ summary: 'API para obtener el estado de la aplicación' })
   @Get('/estado')
-  async verificarEstado() {
+  verificarEstado() {
     const now = dayjs()
     return {
       servicio: packageJson.name,

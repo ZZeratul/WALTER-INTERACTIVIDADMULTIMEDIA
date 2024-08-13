@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
-import { ParametricasModule } from './parametricas/parametricas.module'
+import { ParametroModule } from './parametro/parametro.module'
 
 @Module({
-  imports: [ParametricasModule],
+  imports: [ParametroModule],
 })
 export class ApplicationModule {}

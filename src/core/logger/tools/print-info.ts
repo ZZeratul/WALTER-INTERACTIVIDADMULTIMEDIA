@@ -25,7 +25,7 @@ export function printInfo(appInfo: AppInfo) {
       entorno: nodeEnv,
       urlLocal: appLocalUrl,
       urlRed: appNetworkUrl,
-      fechaDespliegue: now,
+      fecha: now,
     },
     formato: `🚀 ${appName} ${appVersion}`,
   })

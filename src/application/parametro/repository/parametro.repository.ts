@@ -2,9 +2,8 @@ import { Brackets, DataSource } from 'typeorm'
 import { Injectable } from '@nestjs/common'
 import { ActualizarParametroDto, CrearParametroDto } from '../dto'
 import { Parametro } from '../entity'
-import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity'
-import { PaginacionQueryDto } from '../../../common/dto/paginacion-query.dto'
 import { ParametroEstado } from '../constant'
+import { PaginacionQueryDto } from '@/common/dto/paginacion-query.dto'
 
 @Injectable()
 export class ParametroRepository {
@@ -23,7 +22,7 @@ export class ParametroRepository {
     parametroDto: ActualizarParametroDto,
     usuarioAuditoria: string
   ) {
-    const datosActualizar: QueryDeepPartialEntity<Parametro> = new Parametro({
+    const datosActualizar = new Parametro({
       ...parametroDto,
       usuarioModificacion: usuarioAuditoria,
     })
@@ -101,7 +100,7 @@ export class ParametroRepository {
       .getMany()
   }
 
-  async buscarCodigo(codigo: string) {
+  buscarCodigo(codigo: string) {
     return this.dataSource
       .getRepository(Parametro)
       .findOne({ where: { codigo: codigo } })

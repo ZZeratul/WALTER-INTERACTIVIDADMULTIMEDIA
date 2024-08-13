@@ -1,6 +1,6 @@
-import dayjs from 'dayjs'
 import { Logger, pino } from 'pino'
 import {
+  AUDIT_LEVEL,
   COLOR,
   DEFAULT_PARAMS,
   LOG_AUDIT_COLOR,
@@ -11,18 +11,14 @@ import fastRedact from 'fast-redact'
 import { LoggerConfig } from './LoggerConfig'
 import {
   AuditOptions,
-  AuditType,
   BaseAuditOptions,
-  BaseExceptionOptions,
-  BaseLogOptions,
   LoggerOptions,
   LoggerParams,
-  LogOptions,
   Metadata,
 } from '../types'
 import { printLoggerParams, stdoutWrite } from '../tools'
-import { getContext } from '../utilities'
-import { BaseException } from './BaseException'
+import { getContext, timeToPrint } from '../utilities'
+import { BaseException } from '@/core/logger'
 import { BaseAudit } from './BaseAudit'
 import { BaseLog } from './BaseLog'
 import { inspect } from 'util'
@@ -108,15 +104,21 @@ export class LoggerService {
                 : options.auditParams.context,
           }
         : DEFAULT_PARAMS.auditParams?.context
-        ? {
-            context: DEFAULT_PARAMS.auditParams.context,
-          }
-        : undefined,
+          ? {
+              context: DEFAULT_PARAMS.auditParams.context,
+            }
+          : undefined,
 
       projectPath:
         typeof options.projectPath === 'undefined'
           ? DEFAULT_PARAMS.projectPath
           : options.projectPath,
+
+      excludeOrigen:
+        typeof options.excludeOrigen === 'undefined'
+          ? DEFAULT_PARAMS.excludeOrigen
+          : options.excludeOrigen,
+
       _levels: [],
       _audit: [],
     }
@@ -154,6 +156,15 @@ export class LoggerService {
     printLoggerParams(loggerParams)
   }
 
+  /**
+   * Devuelve una instancia de logger.
+   *
+   * @example
+   * import { LoggerService } from '../../core/logger'
+   * const logger = LoggerService.getInstance()
+   *
+   * @returns LoggerService
+   */
   static getInstance(): LoggerService {
     if (LoggerService.loggerInstance) {
       return LoggerService.loggerInstance
@@ -170,86 +181,161 @@ export class LoggerService {
     return LoggerService.redact
   }
 
-  static changeLevel(newLevel: LOG_LEVEL) {
-    if (LoggerService.mainPinoInstance) {
-      LoggerService.mainPinoInstance.level = newLevel
-      return true
-    }
-    return false
+  /**
+   * Registra logs de nivel error.
+   *
+   * @example
+   *
+   * logger.error(error)
+   * logger.error(error, ...params)
+   *
+   * // Caso de uso 1:
+   * function tarea(datos) {
+   *   try {
+   *     // código inseguro
+   *   } catch (err) {
+   *     logger.error(err)
+   *   }
+   * }
+   *
+   * // Caso de uso 2 (recomendado):
+   * logger.error(
+   *   new BaseException(err, {
+   *     mensaje: 'Mensaje para el cliente',
+   *     metadata: { algun: 'metadato', adicional: 'clave:valor' },
+   *     modulo: 'SEGIP:CONTRASTACIÓN',
+   *   })
+   * )
+   *
+   * @param params
+   */
+  error(...params: unknown[]): void {
+    const exceptionInfo = new BaseException(params[0], {
+      metadata: this.buildMetadata(params.slice(1)),
+    })
+    this.printException(exceptionInfo)
   }
 
-  static changeAudit(audit: string) {
-    if (LoggerService.loggerParams) {
-      LoggerService.loggerParams._audit = !audit ? [] : audit.split(' ') || []
-      return true
-    }
-    return false
+  /**
+   * Registra logs de nivel warning.
+   *
+   * @example
+   *
+   * logger.warn(...params)
+   *
+   * // Caso de uso 1:
+   * logger.warn('Mensaje de advertencia')
+   *
+   * // Caso de uso 2:
+   * logger.warn({
+   *   mensaje: 'Mensaje para el cliente',
+   *   metadata: { algun: 'metadato', adicional: 'clave:valor' },
+   *   modulo: 'opcional',
+   * })
+   * @param params
+   */
+  warn(...params: unknown[]): void {
+    this._log(LOG_LEVEL.WARN, ...params)
   }
 
-  static getLevelStatus() {
-    const baseInstance = LoggerService.mainPinoInstance
-    const auditInstance = LoggerService.auditPinoInstance
-    const levels = LoggerService.loggerParams?._levels || []
-    const audit = LoggerService.loggerParams?._audit || []
-    return {
-      pid: process.pid,
-      base: levels.map((lvl) => ({
-        level: lvl,
-        estado: baseInstance?.isLevelEnabled(lvl) ? 'activo' : 'inactivo',
-      })),
-      audit: audit.map((lvl) => ({
-        level: lvl,
-        estado: auditInstance?.isLevelEnabled(lvl) ? 'activo' : 'inactivo',
-      })),
-    }
+  /**
+   * Registra logs de nivel info.
+   *
+   * @example
+   *
+   * logger.info(...params)
+   *
+   * // Caso de uso 1:
+   * logger.info('Mensaje informativo')
+   *
+   * // Caso de uso 2:
+   * logger.info({
+   *   mensaje: 'Mensaje para el cliente',
+   *   metadata: { algun: 'metadato', adicional: 'clave:valor' },
+   *   modulo: 'opcional',
+   * })
+   * @param params
+   */
+  info(...params: unknown[]): void {
+    this._log(LOG_LEVEL.INFO, ...params)
   }
 
-  error(error: unknown): void
-  error(error: unknown, mensaje: string): void
-  error(error: unknown, mensaje: string, metadata: Metadata): void
-  error(
-    error: unknown,
-    mensaje: string,
-    metadata: Metadata,
-    modulo: string
-  ): void
-  error(error: unknown, opt: LogOptions): void
-  error(...args: unknown[]): void {
-    const caller = getContext(3)
-    const exceptInfo = this.buildException(caller, ...args)
-    this.printException(exceptInfo)
+  /**
+   * Registra logs de nivel debug.
+   *
+   * @example
+   *
+   * logger.debug(...params)
+   *
+   * // Caso de uso:
+   * logger.debug('DATOS = ', datos)
+   * @param params
+   */
+  debug(...params: unknown[]): void {
+    this._log(LOG_LEVEL.DEBUG, ...params)
   }
 
-  warn(mensaje: string): void
-  warn(mensaje: string, metadata: Metadata): void
-  warn(mensaje: string, metadata: Metadata, modulo: string): void
-  warn(opt: LogOptions): void
-  warn(...args: unknown[]): void {
+  /**
+   * Registra logs de nivel trace.
+   *
+   * @example
+   *
+   * logger.trace(...params)
+   * @param params
+   */
+  trace(...params: unknown[]): void {
+    this._log(LOG_LEVEL.TRACE, ...params)
+  }
+
+  private _log(level: LOG_LEVEL, ...params: unknown[]) {
     const pinoLogger = LoggerService.mainPinoInstance
-    if (!pinoLogger || !pinoLogger.isLevelEnabled(LOG_LEVEL.WARN)) {
+    if (!pinoLogger || !pinoLogger.isLevelEnabled(level)) {
       return
     }
-    const logInfo = this.buildLog(LOG_LEVEL.WARN, ...args)
+    const logInfo = new BaseLog({
+      metadata: this.buildMetadata(params),
+      level,
+    })
     this.printLog(logInfo)
   }
 
-  info(mensaje: string): void
-  info(mensaje: string, metadata: Metadata): void
-  info(mensaje: string, metadata: Metadata, modulo: string): void
-  info(opt: LogOptions): void
-  info(...args: unknown[]): void {
-    const pinoLogger = LoggerService.mainPinoInstance
-    if (!pinoLogger || !pinoLogger.isLevelEnabled(LOG_LEVEL.INFO)) {
-      return
-    }
-    const logInfo = this.buildLog(LOG_LEVEL.INFO, ...args)
-    this.printLog(logInfo)
+  private buildMetadata(params: unknown[]) {
+    return params.reduce((prev: object, curr, index) => {
+      prev[index] = curr
+      return prev
+    }, {}) as Metadata
   }
 
+  /**
+   * Registra logs de auditoría.
+   *
+   * @example
+   * logger.audit(contexto, mensaje)
+   * logger.audit(contexto, mensaje, metadata)
+   * logger.audit(contexto, {
+   *   mensaje,
+   *   metadata,
+   * })
+   *
+   * // Caso de uso:
+   * function login(user) {
+   *  this.logger.audit('authentication', {
+   *    mensaje: 'Ingresó al sistema',
+   *    metadata: { usuario: user.id, tipo: 'básico' },
+   *  })
+   * }
+   *
+   * @param contexto string
+   * @param params unknown[]
+   */
   audit(contexto: string, mensaje: string): void
   audit(contexto: string, mensaje: string, metadata: Metadata): void
   audit(contexto: string, opt: AuditOptions): void
-  audit(contexto: string, ...args: unknown[]): void {
+  audit(contexto: string, ...params: unknown[]): void {
+    this._audit(AUDIT_LEVEL.DEFAULT, contexto, ...params)
+  }
+
+  private _audit(level: AUDIT_LEVEL, contexto: string, ...params: unknown[]) {
     const pinoLogger = LoggerService.auditPinoInstance
     if (
       !pinoLogger ||
@@ -258,173 +344,79 @@ export class LoggerService {
     ) {
       return
     }
-    const auditInfo = LoggerService.buildAudit('none', contexto, ...args)
+    const auditInfo = LoggerService.buildAudit(level, contexto, ...params)
     this.printAudit(auditInfo)
   }
 
+  /**
+   * Logs de auditoría de tipo error.
+   *
+   * Al imprimirlos en la terminal
+   * se muestran con un resaltado de tipo error.
+   * @param contexto string
+   * @param params unknown[]
+   */
   auditError(contexto: string, mensaje: string): void
   auditError(contexto: string, mensaje: string, metadata: Metadata): void
   auditError(contexto: string, opt: AuditOptions): void
-  auditError(contexto: string, ...args: unknown[]): void {
-    const pinoLogger = LoggerService.auditPinoInstance
-    if (
-      !pinoLogger ||
-      !pinoLogger.isLevelEnabled(contexto) ||
-      !LoggerService.loggerParams?._audit.includes(contexto)
-    ) {
-      return
-    }
-    const auditInfo = LoggerService.buildAudit('error', contexto, ...args)
-    this.printAudit(auditInfo)
+  auditError(contexto: string, ...params: unknown[]): void {
+    this._audit(AUDIT_LEVEL.ERROR, contexto, ...params)
   }
 
-  auditWarning(contexto: string, mensaje: string): void
-  auditWarning(contexto: string, mensaje: string, metadata: Metadata): void
-  auditWarning(contexto: string, opt: AuditOptions): void
-  auditWarning(contexto: string, ...args: unknown[]): void {
-    const pinoLogger = LoggerService.auditPinoInstance
-    if (
-      !pinoLogger ||
-      !pinoLogger.isLevelEnabled(contexto) ||
-      !LoggerService.loggerParams?._audit.includes(contexto)
-    ) {
-      return
-    }
-    const auditInfo = LoggerService.buildAudit('warning', contexto, ...args)
-    this.printAudit(auditInfo)
+  /**
+   * Logs de auditoría de tipo warning.
+   *
+   * Al imprimirlos en la terminal
+   * se muestran con un resaltado de tipo warning.
+   * @param contexto string
+   * @param params unknown[]
+   */
+  auditWarn(contexto: string, mensaje: string): void
+  auditWarn(contexto: string, mensaje: string, metadata: Metadata): void
+  auditWarn(contexto: string, opt: AuditOptions): void
+  auditWarn(contexto: string, ...params: unknown[]): void {
+    this._audit(AUDIT_LEVEL.WARN, contexto, ...params)
   }
 
+  /**
+   * Logs de auditoría de tipo success.
+   *
+   * Al imprimirlos en la terminal
+   * se muestran con un resaltado de tipo success.
+   * @param contexto string
+   * @param params unknown[]
+   */
   auditSuccess(contexto: string, mensaje: string): void
   auditSuccess(contexto: string, mensaje: string, metadata: Metadata): void
   auditSuccess(contexto: string, opt: AuditOptions): void
-  auditSuccess(contexto: string, ...args: unknown[]): void {
-    const pinoLogger = LoggerService.auditPinoInstance
-    if (
-      !pinoLogger ||
-      !pinoLogger.isLevelEnabled(contexto) ||
-      !LoggerService.loggerParams?._audit.includes(contexto)
-    ) {
-      return
-    }
-    const auditInfo = LoggerService.buildAudit('success', contexto, ...args)
-    this.printAudit(auditInfo)
+  auditSuccess(contexto: string, ...params: unknown[]): void {
+    this._audit(AUDIT_LEVEL.SUCCESS, contexto, ...params)
   }
 
+  /**
+   * Logs de auditoría de tipo info.
+   *
+   * Al imprimirlos en la terminal
+   * se muestran con un resaltado de tipo info.
+   * @param contexto string
+   * @param params unknown[]
+   */
   auditInfo(contexto: string, mensaje: string): void
   auditInfo(contexto: string, mensaje: string, metadata: Metadata): void
   auditInfo(contexto: string, opt: AuditOptions): void
-  auditInfo(contexto: string, ...args: unknown[]): void {
-    const pinoLogger = LoggerService.auditPinoInstance
-    if (
-      !pinoLogger ||
-      !pinoLogger.isLevelEnabled(contexto) ||
-      !LoggerService.loggerParams?._audit.includes(contexto)
-    ) {
-      return
-    }
-    const auditInfo = LoggerService.buildAudit('info', contexto, ...args)
-    this.printAudit(auditInfo)
-  }
-
-  private buildException(origen: string, ...args: unknown[]): BaseException {
-    // 1ra forma - (error: unknown) => BaseException
-    if (arguments.length === 2) {
-      return new BaseException(args[0], { origen })
-    }
-
-    // 2da forma - (error: unknown, mensaje: string) => BaseException
-    else if (arguments.length === 3 && typeof args[1] === 'string') {
-      return new BaseException(args[0], {
-        mensaje: args[1],
-        // origen,
-      })
-    }
-
-    // 3ra forma - (error: unknown, mensaje: string, metadata: Metadata) => BaseException
-    else if (arguments.length === 4 && typeof args[1] === 'string') {
-      return new BaseException(args[0], {
-        mensaje: args[1],
-        metadata: args[2] as Metadata,
-        // origen,
-      })
-    }
-
-    // 4ta forma - (error: unknown, mensaje: string, metadata: Metadata, modulo: string) => BaseException
-    else if (
-      arguments.length === 5 &&
-      typeof args[1] === 'string' &&
-      typeof args[3] === 'string'
-    ) {
-      return new BaseException(args[0], {
-        mensaje: args[1],
-        metadata: args[2] as Metadata,
-        modulo: args[3],
-        // origen,
-      })
-    }
-
-    // 5ta forma - (error: unknown, opt: BaseExceptionOptions) => BaseException
-    else {
-      return new BaseException(args[0], {
-        ...(args[1] as BaseExceptionOptions),
-        // origen,
-      })
-    }
-  }
-
-  private buildLog(
-    lvl: LOG_LEVEL.WARN | LOG_LEVEL.INFO,
-    ...args: unknown[]
-  ): BaseLog {
-    // 1ra forma - (mensaje: string) => BaseLog
-    if (arguments.length === 2 && typeof args[0] === 'string') {
-      return new BaseLog({
-        mensaje: args[0],
-        level: lvl,
-      })
-    }
-
-    // 2da forma - (mensaje: string, metadata: Metadata) => BaseLog
-    else if (arguments.length === 3 && typeof args[0] === 'string') {
-      return new BaseLog({
-        mensaje: args[0],
-        metadata: args[1] as Metadata,
-        level: lvl,
-      })
-    }
-
-    // 3ra forma - (mensaje: string, metadata: Metadata, modulo: string) => BaseLog
-    else if (
-      arguments.length === 4 &&
-      typeof args[0] === 'string' &&
-      typeof args[2] === 'string'
-    ) {
-      return new BaseLog({
-        mensaje: args[0],
-        metadata: args[1] as Metadata,
-        modulo: args[2],
-        level: lvl,
-      })
-    }
-
-    // 4ta forma - (opt: BaseLogOptions) => BaseLog
-    else {
-      return new BaseLog({
-        ...(args[0] as BaseLogOptions),
-        level: lvl,
-      })
-    }
+  auditInfo(contexto: string, ...params: unknown[]): void {
+    this._audit(AUDIT_LEVEL.INFO, contexto, ...params)
   }
 
   private static buildAudit(
-    tipo: AuditType,
+    lvl: AUDIT_LEVEL,
     contexto: string,
     ...args: unknown[]
   ): BaseAudit {
     // 1ra forma - (contexto: string, mensaje: string) => BaseAudit
     if (arguments.length === 3 && typeof args[0] === 'string') {
       return new BaseAudit({
-        tipo,
+        level: lvl,
         contexto,
         mensaje: args[0],
       })
@@ -433,7 +425,7 @@ export class LoggerService {
     // 2da forma - (contexto: string, mensaje: string, metadata: Metadata) => BaseAudit
     else if (arguments.length === 4 && typeof args[0] === 'string') {
       return new BaseAudit({
-        tipo,
+        level: lvl,
         contexto,
         mensaje: args[0],
         metadata: args[1] as Metadata,
@@ -444,7 +436,7 @@ export class LoggerService {
     else {
       return new BaseAudit({
         ...(args[0] as BaseAuditOptions),
-        tipo,
+        level: lvl,
         contexto,
       })
     }
@@ -468,7 +460,7 @@ export class LoggerService {
 
       // PRINT TO CONSOLE
       const msg = info.toString()
-      const caller = getContext()
+      const caller = getContext(4)
       this.printToConsole(level, msg, caller)
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -489,7 +481,7 @@ export class LoggerService {
 
       // PRINT TO CONSOLE
       const msg = info.toString()
-      const caller = getContext()
+      const caller = getContext(5)
       this.printToConsole(level, msg, caller)
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -533,7 +525,7 @@ export class LoggerService {
 
   private printToConsole(level: LOG_LEVEL, msg: string, caller: string): void {
     const color = LOG_COLOR[level]
-    const time = dayjs().format('YYYY-MM-DD HH:mm:ss.SSS')
+    const time = timeToPrint()
     const cTime = `${COLOR.RESET}${time}${COLOR.RESET}`
     const cLevel = `${color}[${level.toUpperCase()}]${COLOR.RESET}`
     const cCaller = `${COLOR.RESET}${caller}${COLOR.RESET}`
@@ -545,12 +537,13 @@ export class LoggerService {
   }
 
   private printAuditToConsole(info: BaseAudit): void {
-    const colorPrimario = LOG_AUDIT_COLOR[info.tipo]
+    const colorPrimario = LOG_AUDIT_COLOR[info.level]
     const colorSecundario = colorPrimario
 
     const metadata = info.metadata || {}
-    const time = dayjs().format('YYYY-MM-DD HH:mm:ss.SSS')
-    const timeColor = info.tipo === 'none' ? COLOR.LIGHT_GREY : COLOR.RESET
+    const time = timeToPrint()
+    const timeColor =
+      info.level === AUDIT_LEVEL.DEFAULT ? COLOR.LIGHT_GREY : COLOR.RESET
     const cTime = `${timeColor}${time}${COLOR.RESET}`
 
     // FORMATO PERSONALIZADO

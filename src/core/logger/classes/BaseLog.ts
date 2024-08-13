@@ -1,12 +1,12 @@
 import { BaseLogOptions, LogEntry, Metadata } from '../types'
 import { cleanParamValue, getReqID } from '../utilities'
-import { LOG_LEVEL, LOG_NUMBER } from '../constants'
+import { LOG_LEVEL } from '../constants'
 import dayjs from 'dayjs'
-import { LoggerService } from './LoggerService'
+import { LoggerService } from '@/core/logger'
 import { inspect } from 'util'
 
 export class BaseLog {
-  level: LOG_LEVEL.WARN | LOG_LEVEL.INFO
+  level: LOG_LEVEL
 
   /**
    * Mensaje para el cliente
@@ -77,16 +77,17 @@ export class BaseLog {
     return this.level
   }
 
-  getNumericLevel() {
-    return LOG_NUMBER[this.level]
-  }
-
   getLogEntry(): LogEntry {
     const args: LogEntry = {
       reqId: getReqID(),
       pid: process.pid,
       fecha: this.fecha,
+      mensaje: this.obtenerMensajeCliente(),
     }
+
+    // Para evitar guardar información vacía
+    if (!args.mensaje) args.mensaje = undefined
+    if (!args.reqId) args.reqId = undefined
 
     if (this.metadata && Object.keys(this.metadata).length > 0) {
       Object.assign(args, { metadata: this.metadata })
@@ -97,12 +98,10 @@ export class BaseLog {
 
   toString(): string {
     const args: string[] = []
-    args.push(this.obtenerMensajeCliente())
 
     if (this.metadata && Object.keys(this.metadata).length > 0) {
       Object.keys(this.metadata).map((key) => {
         const item = this.metadata[key]
-        args.push(`- ${key}:`)
         args.push(
           typeof item === 'string' ? item : inspect(item, false, null, false)
         )

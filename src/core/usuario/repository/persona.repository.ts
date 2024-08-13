@@ -2,7 +2,7 @@ import { DataSource, EntityManager } from 'typeorm'
 import { Persona } from '../entity/persona.entity'
 import { PersonaDto } from '../dto/persona.dto'
 import { Injectable } from '@nestjs/common'
-import { Status } from '../../../common/constants'
+import { PersonaEstado } from '@/core/usuario/constant'
 
 @Injectable()
 export class PersonaRepository {
@@ -24,7 +24,9 @@ export class PersonaRepository {
         nroDocumento: personaDto?.nroDocumento,
         fechaNacimiento: personaDto?.fechaNacimiento,
         tipoDocumento: personaDto.tipoDocumento,
+        telefono: personaDto?.telefono,
         usuarioCreacion: usuarioAuditoria,
+        uuidCiudadano: personaDto.uuidCiudadano,
       })
     )
   }
@@ -46,7 +48,7 @@ export class PersonaRepository {
       .createQueryBuilder('p')
       .where('p.nro_documento = :numeroDocumento', { numeroDocumento })
       .andWhere('p.tipo_documento = :tipoDocumento', { tipoDocumento })
-      .andWhere('p.estado = :estado', { estado: Status.ACTIVE })
+      .andWhere('p.estado = :estado', { estado: PersonaEstado.ACTIVE })
       .getOne()
   }
 

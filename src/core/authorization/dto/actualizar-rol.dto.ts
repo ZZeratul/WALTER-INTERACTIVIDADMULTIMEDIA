@@ -1,14 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsNotEmpty } from 'class-validator'
+import { IsNotEmpty } from '@/common/validation'
 
 export class ActualizarRolDto {
   @IsNotEmpty()
-  @ApiProperty()
+  @ApiProperty({ example: 'ADMINISTRADOR' })
   rol: string
 
   @IsNotEmpty()
-  @ApiProperty()
+  @ApiProperty({ example: 'Administrador' })
   nombre: string
 
+  @ApiProperty({ example: 'Descripción' })
+  @IsNotEmpty()
+  descripcion: string
+
+  @ApiProperty({ example: 'ACTIVO' })
   estado?: string
 }

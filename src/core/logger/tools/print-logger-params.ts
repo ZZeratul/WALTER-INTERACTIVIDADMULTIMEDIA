@@ -15,7 +15,8 @@ export function printLoggerParams(loggerParams: LoggerParams) {
         key !== '_levels' &&
         key !== '_audit' &&
         key !== 'hide' &&
-        key !== 'console'
+        key !== 'console' &&
+        key !== 'excludeOrigen'
     )
     .forEach((property) => {
       stdoutWrite(

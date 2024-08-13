@@ -62,8 +62,8 @@ export class PaginacionQueryDto {
     return !this.ordenRaw
       ? undefined
       : this.descendente
-      ? this.ordenRaw.substring(1)
-      : this.ordenRaw
+        ? this.ordenRaw.substring(1)
+        : this.ordenRaw
   }
 
   get sentido() {

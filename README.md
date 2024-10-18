@@ -5,7 +5,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?style=flat-square&logo=postgresql)
 ![TypeORM](https://img.shields.io/badge/TypeORM-0.3-orange?style=flat-square)
 <a href="./">
-<img src="https://img.shields.io/badge/version-v1.1.0-blue" alt="Versión">
+<img src="https://img.shields.io/badge/version-v1.2.0-blue" alt="Versión">
 </a>
 <a href="./LICENSE">
 <img src="https://img.shields.io/static/v1?label=license&message=LPG%20-%20Bolivia&color=green" alt="Licencia: LPG - Bolivia" />
@@ -148,18 +148,16 @@ Para usar este proyecto como base de un nuevo proyecto, sigue estos pasos:
 
 ## 🔖 Versionado
 
-Para generar una nueva versión:
+1. Generar tag y archivo CHANGELOG. `patch (0.0.x) | minor (0.x.0) | major (x.0.0)`
 
-1. Actualiza la versión en `package.json`
-
-2. Ejecuta:
    ```bash
-   npm run release -- --release-as patch
+   $ npm run release -- --release-as patch
    ```
 
-3. Publica los tags:
+2. Guardar los tags generados
+
    ```bash
-   git push --follow-tags origin master
+   $ git push --follow-tags origin main
    ```
 
 ## 📄 Licencia

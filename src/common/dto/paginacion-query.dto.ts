@@ -58,6 +58,7 @@ export class PaginacionQueryDto {
   get descendente() {
     return this.ordenRaw?.startsWith('-')
   }
+
   get orden() {
     return !this.ordenRaw
       ? undefined

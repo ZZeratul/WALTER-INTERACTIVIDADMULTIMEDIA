@@ -1,4 +1,5 @@
 import { nroDocumento } from './nro-documento.validator'
+
 describe('NroDocumento validator', () => {
   it('Debería retornar false para entradas undefined o null', () => {
     expect(nroDocumento(undefined)).toBe(false)

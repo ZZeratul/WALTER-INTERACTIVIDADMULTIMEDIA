@@ -7,15 +7,8 @@
 #ignoring dotfiles
 .dockerignore
 .env.sample
-.env
 .gitignore
 .git
 
 #ignoring markdown files
 *.md
-
-*ockerfile*
-*docker-compose*
-
-./.gitlab-ci.yml
-./.gitlab

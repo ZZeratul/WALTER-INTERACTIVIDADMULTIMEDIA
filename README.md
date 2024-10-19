@@ -101,6 +101,7 @@ src/
 - [Arquitectura](/docs/arquitectura.md)
 - [Documentación de APIs](/docs/openapi.yaml)
 - [Documentación de Permisos](/docs/permisos.md)
+- [Presentación Backend - Base Backend](/docs/Backend-Capacitacion-Bootcamp.pdf)
 
 ## 🧪 Pruebas
 
